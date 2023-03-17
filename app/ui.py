@@ -1,15 +1,21 @@
-from objectpack.ui import BaseEditWindow
+import six
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
+from m3_ext.ui.fields import ExtDictSelectField
+
+from objectpack.ui import BaseEditWindow, TabbedEditWindow, ObjectTab
 from m3_ext.ui import all_components as ext
+from . import actions
 
 
 class UserAddWindow(BaseEditWindow):
 
-    def _init_components(self):
+    def _init_components(self, *args, **kwargs):
         """
         Здесь следует инициализировать компоненты окна и складывать их в
         :attr:`self`.
         """
-        super(UserAddWindow, self)._init_components()
+        super(UserAddWindow, self)._init_components(*args, **kwargs)
 
         self.field__password = ext.ExtStringField(
             label=u'Password',
@@ -41,7 +47,8 @@ class UserAddWindow(BaseEditWindow):
         self.field__lastname = ext.ExtStringField(
             label=u'last name',
             name='lastname',
-            anchor='100%')
+            anchor='100%',
+            data=ContentType)
 
         self.field__emailaddress = ext.ExtStringField(
             label=u'email address',
@@ -83,10 +90,31 @@ class UserAddWindow(BaseEditWindow):
         ))
 
     def set_params(self, params):
-        """
-        Установка параметров окна
-
-        :params: Словарь с параметрами, передается из пака
-        """
         super(UserAddWindow, self).set_params(params)
         self.height = 'auto'
+
+
+class PermissionTab(ObjectTab.fabricate(
+    model=Permission, field_list=('name', 'content_type', 'codename',))):
+
+    def init_components(self, *args, **kwargs):
+        super(PermissionTab, self).init_components(*args, **kwargs)
+
+        self._content_type_field = ExtDictSelectField(
+            label='Content Type')
+        self._controls.append(self._content_type_field)
+
+    def set_params(self, *args, **kwargs):
+        super(PermissionTab, self).set_params(*args, **kwargs)
+
+        self._content_type_field.pack = actions.ContentTypePak
+        self._content_type_field.display_field = (
+            '__unicode__' if six.PY2 else '__str__'
+        )
+
+
+class PermissionEditWindow(TabbedEditWindow):
+    tabs = [
+        PermissionTab,
+
+    ]
